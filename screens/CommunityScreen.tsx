@@ -20,6 +20,25 @@ export default function CommunityScreen() {
           title=""
           onProfilePress={() => router.push(AppRoutes.profile)}
         />
+         <SectionHeader
+          title="My Feed"
+          subtitle="Posts and reels from the community"
+        />
+        <Text style={styles.snippet}>
+          Yaha pr reels aur posts aayegi........
+        </Text>
+        <Text style={styles.snippet}>
+          Yaha pr reels aur posts aayegi........
+        </Text>
+        <Text style={styles.snippet}>
+          Yaha pr reels aur posts aayegi........
+        </Text>
+        <Text style={styles.snippet}>
+          Yaha pr reels aur posts aayegi........
+        </Text>
+        <Text style={styles.snippet}>
+          Yaha pr reels aur posts aayegi........
+        </Text>
         <SectionHeader
           title="Recent Conversations"
           subtitle="Social commerce interactions"
