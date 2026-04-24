@@ -8,42 +8,73 @@ import {
     View,
 } from "react-native";
 
-import type { Product } from "@/data/products";
+import type { Product } from "../data/products";
+import { PrimaryButton } from "./PrimaryButton";
+import { RatingStars } from "./RatingStars";
 
 type ProductCardProps = {
   product: Product;
-  onJoinDeal: () => void;
+  mode?: "buyer" | "seller";
+  onPress: () => void;
+  onPrimaryPress?: () => void;
+  primaryLabel?: string;
   joined?: boolean;
 };
 
 export function ProductCard({
   product,
-  onJoinDeal,
+  mode = "buyer",
+  onPress,
+  onPrimaryPress,
+  primaryLabel,
   joined = false,
 }: ProductCardProps) {
+  const defaultLabel =
+    mode === "seller" ? "Edit" : joined ? "Joined" : "View Details";
+
   return (
-    <View style={styles.card}>
+    <Pressable style={styles.card} onPress={onPress}>
       <Image source={{ uri: product.image }} style={styles.image} />
       <View style={styles.content}>
-        <Text style={styles.name}>{product.name}</Text>
-        <Text style={styles.price}>Rs. {product.price}</Text>
-        <Text style={styles.distance}>{product.distance}</Text>
-        <Pressable
-          style={[styles.button, joined && styles.buttonJoined]}
-          onPress={onJoinDeal}
-          disabled={joined}
-        >
-          <Text style={styles.buttonText}>
-            {joined ? "Joined" : "Join Deal"}
+        <View style={styles.headerRow}>
+          <Text style={styles.name} numberOfLines={1}>
+            {product.name}
           </Text>
-        </Pressable>
+          <Text style={styles.price}>Rs. {product.price}</Text>
+        </View>
+
+        <Text style={styles.description} numberOfLines={2}>
+          {product.shortDescription}
+        </Text>
+
+        <View style={styles.metaRow}>
+          <Text style={styles.meta}>
+            {product.locality} • {product.distance}
+          </Text>
+          <RatingStars rating={product.rating} size={12} />
+        </View>
+
+        {mode === "seller" ? (
+          <Text style={styles.stockText}>
+            Stock: {product.stockStatus.replace("-", " ")}
+          </Text>
+        ) : null}
+
+        <View style={styles.buttonWrap}>
+          <PrimaryButton
+            label={primaryLabel ?? defaultLabel}
+            onPress={onPrimaryPress ?? onPress}
+            disabled={joined && mode === "buyer"}
+            variant={mode === "seller" ? "ghost" : "solid"}
+          />
+        </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
 export function ProductCardSkeleton() {
-  const pulse = useRef(new Animated.Value(0.45)).current;
+  const pulse = useRef(new Animated.Value(0.42)).current;
 
   useEffect(() => {
     const animation = Animated.loop(
@@ -54,7 +85,7 @@ export function ProductCardSkeleton() {
           useNativeDriver: true,
         }),
         Animated.timing(pulse, {
-          toValue: 0.45,
+          toValue: 0.42,
           duration: 650,
           useNativeDriver: true,
         }),
@@ -63,9 +94,7 @@ export function ProductCardSkeleton() {
 
     animation.start();
 
-    return () => {
-      animation.stop();
-    };
+    return () => animation.stop();
   }, [pulse]);
 
   return (
@@ -80,11 +109,11 @@ export function ProductCardSkeleton() {
           opacity={pulse}
         />
         <SkeletonBlock
-          style={[styles.skeletonLine, styles.skeletonPrice]}
+          style={[styles.skeletonLine, styles.skeletonDesc]}
           opacity={pulse}
         />
         <SkeletonBlock
-          style={[styles.skeletonLine, styles.skeletonDistance]}
+          style={[styles.skeletonLine, styles.skeletonMeta]}
           opacity={pulse}
         />
         <SkeletonBlock
@@ -109,82 +138,87 @@ function SkeletonBlock({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#ffffff",
-    borderRadius: 18,
-    padding: 12,
-    flexDirection: "row",
-    gap: 12,
-    shadowColor: "#000000",
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#dce8e0",
+    overflow: "hidden",
+    marginBottom: 12,
   },
   image: {
-    width: 92,
-    height: 92,
-    borderRadius: 14,
-    backgroundColor: "#eceff1",
+    width: "100%",
+    height: 160,
+    backgroundColor: "#dfe9e2",
   },
   content: {
-    flex: 1,
+    padding: 12,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   name: {
-    fontSize: 17,
+    flex: 1,
+    fontSize: 16,
     fontWeight: "700",
-    color: "#1c1f26",
+    color: "#10261a",
+    marginRight: 8,
   },
   price: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1f8f57",
+  },
+  description: {
     marginTop: 6,
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#00897b",
-  },
-  distance: {
-    marginTop: 2,
+    color: "#55655b",
     fontSize: 13,
-    color: "#607d8b",
   },
-  button: {
-    marginTop: 10,
-    alignSelf: "flex-start",
-    backgroundColor: "#1e88e5",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+  metaRow: {
+    marginTop: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  buttonJoined: {
-    backgroundColor: "#43a047",
+  meta: {
+    color: "#64776b",
+    fontSize: 12,
+    fontWeight: "500",
   },
-  buttonText: {
-    color: "#ffffff",
+  stockText: {
+    marginTop: 8,
+    color: "#1c6d44",
     fontWeight: "600",
-    fontSize: 14,
+    textTransform: "capitalize",
+    fontSize: 12,
+  },
+  buttonWrap: {
+    marginTop: 10,
   },
   skeletonBlock: {
-    backgroundColor: "#e3e8ee",
+    backgroundColor: "#e4ebe6",
   },
   skeletonLine: {
-    height: 12,
     borderRadius: 8,
-    backgroundColor: "#e3e8ee",
+    backgroundColor: "#e4ebe6",
   },
   skeletonTitle: {
-    width: "70%",
+    width: "68%",
     height: 18,
-    marginTop: 4,
   },
-  skeletonPrice: {
-    width: "35%",
-    marginTop: 10,
-  },
-  skeletonDistance: {
-    width: "45%",
+  skeletonDesc: {
     marginTop: 8,
+    width: "85%",
+    height: 12,
+  },
+  skeletonMeta: {
+    marginTop: 8,
+    width: "52%",
+    height: 12,
   },
   skeletonButton: {
-    width: "36%",
-    height: 30,
     marginTop: 12,
-    borderRadius: 10,
+    width: "38%",
+    height: 36,
   },
 });

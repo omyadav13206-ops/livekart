@@ -24,6 +24,8 @@ const MAPPING = {
   "list.bullet.rectangle.fill": "view-list",
   "dot.radiowaves.left.and.right": "wifi-tethering",
   "person.crop.circle.fill": "account-circle",
+  "bubble.left.and.bubble.right.fill": "forum",
+  "receipt.fill": "receipt-long",
 } as IconMapping;
 
 /**

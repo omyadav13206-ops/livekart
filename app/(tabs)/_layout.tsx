@@ -3,16 +3,20 @@ import React from "react";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { Colors } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useAppContext } from "../../context/AppContext";
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { themeMode } = useAppContext();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
+        tabBarActiveTintColor: "#1f8f57",
+        tabBarInactiveTintColor: themeMode === "dark" ? "#a6c6b3" : "#7c9487",
+        tabBarStyle: {
+          backgroundColor: themeMode === "dark" ? "#16231c" : "#ffffff",
+          borderTopColor: themeMode === "dark" ? "#254133" : "#e1ebe4",
+        },
         headerShown: false,
         tabBarButton: HapticTab,
       }}
@@ -20,39 +24,31 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Feed",
+          title: "Home",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="house.fill" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="community"
+        options={{
+          title: "Community",
           tabBarIcon: ({ color }) => (
             <IconSymbol
               size={28}
-              name="list.bullet.rectangle.fill"
+              name="bubble.left.and.bubble.right.fill"
               color={color}
             />
           ),
         }}
       />
       <Tabs.Screen
-        name="live"
+        name="orders"
         options={{
-          title: "Live",
+          title: "My Orders",
           tabBarIcon: ({ color }) => (
-            <IconSymbol
-              size={28}
-              name="dot.radiowaves.left.and.right"
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol
-              size={28}
-              name="person.crop.circle.fill"
-              color={color}
-            />
+            <IconSymbol size={28} name="receipt.fill" color={color} />
           ),
         }}
       />
