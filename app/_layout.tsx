@@ -5,22 +5,40 @@ import {
 } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { ActivityIndicator, View } from "react-native";
 import "react-native-reanimated";
 
 import { RoleSelectionView } from "../components/RoleSelectionView";
 import { AppProvider, useAppContext } from "../context/AppContext";
+import AuthScreen from "../screens/AuthScreen";
 
 export const unstable_settings = {
   anchor: "(tabs)",
 };
 
 function RootLayoutContainer() {
-  const { themeMode, role, setRole } = useAppContext();
+  const { themeMode, role, setRole, isLoggedIn, isLoading } = useAppContext();
 
+  // Auth check in progress — show loading spinner
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f0f8f3" }}>
+        <ActivityIndicator size="large" color="#1f8f57" />
+      </View>
+    );
+  }
+
+  // User is not logged in — show Auth screen
+  if (!isLoggedIn) {
+    return <AuthScreen onAuthSuccess={() => {}} />;
+  }
+
+  // Role not selected — show Role selection
   if (!role) {
     return <RoleSelectionView onSelectRole={setRole} />;
   }
 
+  // Everything is fine — show main app
   return (
     <ThemeProvider value={themeMode === "dark" ? DarkTheme : DefaultTheme}>
       <Stack>

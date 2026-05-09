@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+    Alert,
     Image,
     SafeAreaView,
     ScrollView,
@@ -14,6 +15,7 @@ import { ProfileMenuItem } from "../components/ProfileMenuItem";
 import { SectionHeader } from "../components/SectionHeader";
 import { useAppContext } from "../context/AppContext";
 import { AppRoutes } from "../navigation/routes";
+import * as authService from "../services/authService";
 
 export default function ProfileScreen() {
   const {
@@ -174,9 +176,26 @@ export default function ProfileScreen() {
         )}
 
         <ProfileMenuItem
-          icon="logout"
-          label="Logout / Re-pick Role (for Testing)"
+          icon="swap-horiz"
+          label="Switch Role"
           onPress={() => setRole(null)}
+        />
+        <ProfileMenuItem
+          icon="logout"
+          label="Logout"
+          onPress={() =>
+            Alert.alert("Logout", "Are you sure you want to logout?", [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Logout",
+                style: "destructive",
+                onPress: async () => {
+                  setRole(null);
+                  await authService.signOut();
+                },
+              },
+            ])
+          }
         />
       </ScrollView>
     </SafeAreaView>
