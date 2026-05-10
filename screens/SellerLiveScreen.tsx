@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import {
   PermissionsAndroid,
   Platform,
-  SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   View,
   Alert,
+  TouchableOpacity,
+  StatusBar,
+  ScrollView,
 } from "react-native";
 import {
   createAgoraRtcEngine,
@@ -15,304 +16,387 @@ import {
   ClientRoleType,
   IRtcEngine,
   RtcSurfaceView,
+  VideoSourceType,
 } from "react-native-agora";
-
-import { PrimaryButton } from "../components/PrimaryButton";
-import { SectionHeader } from "../components/SectionHeader";
 import { useAppContext } from "../context/AppContext";
 
-const appId = process.env.EXPO_PUBLIC_AGORA_APP_ID || "YOUR_AGORA_APP_ID_HERE";
-const channelName = "localbaazar_live";
-
-const liveChat = [
-  "Aman: Is this available in bulk?",
-  "Neha: Please show packaging quality.",
-  "Ravi: Can you bundle with pickles?",
-  "Priya: What's the delivery ETA?",
-];
+const APP_ID = "your agora app id ";
+const CHANNEL = "localbaazar_live";
+const TOKEN = "";
+const UID = 0;
 
 export default function SellerLiveScreen() {
   const { sellerProducts, currentLiveProduct, setCurrentLiveProductById } =
     useAppContext();
-  
-  const agoraEngineRef = useRef<IRtcEngine | null>(null);
+
+  const engine = useRef<IRtcEngine | null>(null);
   const [isJoined, setIsJoined] = useState(false);
   const [viewerCount, setViewerCount] = useState(0);
+  const [permissionsGranted, setPermissionsGranted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setupVideoSDKEngine();
+    initAgora();
     return () => {
-      leave();
+      engine.current?.leaveChannel();
+      engine.current?.release();
     };
   }, []);
 
-  const setupVideoSDKEngine = async () => {
+  const requestPermissions = async (): Promise<boolean> => {
+    if (Platform.OS !== "android") return true;
     try {
-      if (Platform.OS === "android") {
-        await requestCameraAndAudioPermission();
-      }
-      agoraEngineRef.current = createAgoraRtcEngine();
-      const agoraEngine = agoraEngineRef.current;
-      agoraEngine.initialize({ appId });
-
-      agoraEngine.registerEventHandler({
-        onJoinChannelSuccess: () => {
-          setIsJoined(true);
-        },
-        onUserJoined: (_connection, uid) => {
-          setViewerCount((prev) => prev + 1);
-        },
-        onUserOffline: (_connection, uid) => {
-          setViewerCount((prev) => Math.max(0, prev - 1));
-        },
-      });
-
-      agoraEngine.setChannelProfile(
-        ChannelProfileType.ChannelProfileLiveBroadcasting
-      );
-      agoraEngine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
-      agoraEngine.enableVideo();
-      agoraEngine.startPreview();
-    } catch (e) {
-      console.log(e);
-    }
-  };
-
-  const requestCameraAndAudioPermission = async () => {
-    try {
-      const granted = await PermissionsAndroid.requestMultiple([
+      const result = await PermissionsAndroid.requestMultiple([
         PermissionsAndroid.PERMISSIONS.CAMERA,
         PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
       ]);
-      if (
-        granted["android.permission.RECORD_AUDIO"] ===
-          PermissionsAndroid.RESULTS.GRANTED &&
-        granted["android.permission.CAMERA"] ===
-          PermissionsAndroid.RESULTS.GRANTED
-      ) {
-        console.log("You can use the cameras & mic");
-      } else {
-        console.log("Permission denied");
+      const cameraOk =
+        result["android.permission.CAMERA"] === PermissionsAndroid.RESULTS.GRANTED;
+      const micOk =
+        result["android.permission.RECORD_AUDIO"] === PermissionsAndroid.RESULTS.GRANTED;
+      if (!cameraOk || !micOk) {
+        Alert.alert(
+          "Permission Required",
+          "Camera aur Microphone ki permission deni hogi live streaming ke liye.\n\nPhone Settings > Apps > local-baazar > Permissions mein jaake allow karein.",
+          [{ text: "OK" }]
+        );
+        return false;
       }
-    } catch (err) {
-      console.warn(err);
+      return true;
+    } catch (e) {
+      return false;
     }
   };
 
-  const join = async () => {
-    if (isJoined) {
+  const initAgora = async () => {
+    const ok = await requestPermissions();
+    setPermissionsGranted(ok);
+    if (!ok) return;
+
+    try {
+      engine.current = createAgoraRtcEngine();
+      engine.current.initialize({
+        appId: APP_ID,
+        channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+      });
+
+      engine.current.registerEventHandler({
+        onError: (errCode) => {
+          setError(`Agora Error: ${errCode}`);
+        },
+        onJoinChannelSuccess: (_conn, elapsed) => {
+          setIsJoined(true);
+          setError(null);
+        },
+        onLeaveChannel: () => {
+          setIsJoined(false);
+          setViewerCount(0);
+        },
+        onUserJoined: (_conn, uid) => {
+          setViewerCount((p) => p + 1);
+        },
+        onUserOffline: (_conn, uid) => {
+          setViewerCount((p) => Math.max(0, p - 1));
+        },
+      });
+
+      engine.current.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+      engine.current.enableVideo();
+      engine.current.enableAudio();
+      engine.current.startPreview();
+    } catch (e: any) {
+      setError(`Init failed: ${e?.message || e}`);
+      Alert.alert("Setup Error", `${e?.message || e}`);
+    }
+  };
+
+  const startLive = async () => {
+    if (!permissionsGranted) {
+      Alert.alert("Permission Needed", "Pehle Camera aur Microphone ki permission dein.");
+      return;
+    }
+    if (!engine.current) {
+      Alert.alert("Error", "Agora engine initialize nahi hua. App restart karein.");
       return;
     }
     try {
-      if (appId === "YOUR_AGORA_APP_ID_HERE") {
-        Alert.alert("Error", "Please set your Agora App ID in SellerLiveScreen.tsx");
-        return;
-      }
-      agoraEngineRef.current?.joinChannel({
-        token: "", // Use token if enabled in Agora Console
-        channelId: channelName,
-        uid: 0,
-        options: {
-          clientRoleType: ClientRoleType.ClientRoleBroadcaster,
-        },
+      engine.current.joinChannel(TOKEN, CHANNEL, UID, {
+        clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+        publishCameraTrack: true,
+        publishMicrophoneTrack: true,
       });
-    } catch (e) {
-      console.log(e);
+    } catch (e: any) {
+      Alert.alert("Join Error", `${e?.message || e}`);
     }
   };
 
-  const leave = () => {
-    try {
-      agoraEngineRef.current?.leaveChannel();
-      setIsJoined(false);
-      setViewerCount(0);
-    } catch (e) {
-      console.log(e);
-    }
+  const stopLive = () => {
+    engine.current?.leaveChannel();
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <SectionHeader
-          title="Seller Live"
-          subtitle="Start streaming to sell products"
-        />
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor="#000" />
 
-        <View style={styles.videoFrame}>
-          <View style={styles.liveBadge}>
-            <Text style={styles.liveBadgeText}>LIVE</Text>
+      {/* Full-screen video */}
+      <View style={styles.videoContainer}>
+        {permissionsGranted ? (
+          <RtcSurfaceView
+            style={styles.video}
+            canvas={{ uid: UID, sourceType: VideoSourceType.VideoSourceCamera }}
+            zOrderMediaOverlay
+          />
+        ) : (
+          <View style={styles.noCameraBox}>
+            <Text style={styles.noCameraText}>📷 Camera Permission Required</Text>
+            <TouchableOpacity style={styles.permBtn} onPress={initAgora}>
+              <Text style={styles.permBtnText}>Allow Permission</Text>
+            </TouchableOpacity>
           </View>
-          
-          {isJoined ? (
-            <React.Fragment>
-              <RtcSurfaceView canvas={{ uid: 0 }} style={styles.videoStream} />
-              <Text style={styles.viewerCount}>{viewerCount} viewers watching</Text>
-            </React.Fragment>
-          ) : (
-            <Text style={styles.videoPlaceholder}>
-              Camera Stream will appear here
-            </Text>
+        )}
+
+        {/* Top overlay */}
+        <View style={styles.topBar}>
+          <View style={[styles.badge, isJoined ? styles.badgeLive : styles.badgePreview]}>
+            <Text style={styles.badgeText}>{isJoined ? "🔴 LIVE" : "📷 PREVIEW"}</Text>
+          </View>
+          {isJoined && (
+            <View style={styles.viewerBadge}>
+              <Text style={styles.viewerText}>👁 {viewerCount}</Text>
+            </View>
           )}
         </View>
 
-        {!isJoined ? (
-          <PrimaryButton label="Start Live Stream" onPress={join} />
-        ) : (
-          <PrimaryButton label="End Live Stream" variant="ghost" onPress={leave} />
+        {/* Bottom overlay - product info */}
+        {isJoined && (
+          <View style={styles.productOverlay}>
+            <Text style={styles.overlayProductName}>{currentLiveProduct?.name}</Text>
+            <Text style={styles.overlayProductPrice}>Rs. {currentLiveProduct?.price}</Text>
+          </View>
         )}
 
-        <View style={{ marginTop: 16 }}>
-          <SectionHeader
-            title="Current Product On Live"
-            subtitle="Buyer live updates from this state"
-          />
-          <View style={styles.currentProductCard}>
-            <Text style={styles.currentName}>{currentLiveProduct.name}</Text>
-            <Text style={styles.currentPrice}>
-              Rs. {currentLiveProduct.price}
-            </Text>
+        {error && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{error}</Text>
           </View>
+        )}
+      </View>
 
-          <SectionHeader
-            title="Show This Product"
-            subtitle="Switch product in live overlay"
-          />
+      {/* Controls */}
+      <View style={styles.controls}>
+        {!isJoined ? (
+          <TouchableOpacity style={styles.startBtn} onPress={startLive}>
+            <Text style={styles.startBtnText}>🎬 Start Live Stream</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.stopBtn} onPress={stopLive}>
+            <Text style={styles.stopBtnText}>⏹ End Live Stream</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Product switcher */}
+      <View style={styles.productSection}>
+        <Text style={styles.sectionTitle}>Product Switch Karein</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {sellerProducts.map((product) => (
-            <View key={product.id} style={styles.productRow}>
-              <View style={styles.productMeta}>
-                <Text style={styles.productName}>{product.name}</Text>
-                <Text style={styles.productPrice}>Rs. {product.price}</Text>
-              </View>
-              <PrimaryButton
-                label="Show"
-                onPress={() => setCurrentLiveProductById(product.id)}
-              />
-            </View>
+            <TouchableOpacity
+              key={product.id}
+              style={[
+                styles.productChip,
+                currentLiveProduct?.id === product.id && styles.productChipActive,
+              ]}
+              onPress={() => setCurrentLiveProductById(product.id)}
+            >
+              <Text
+                style={[
+                  styles.productChipText,
+                  currentLiveProduct?.id === product.id && styles.productChipTextActive,
+                ]}
+              >
+                {product.name}
+              </Text>
+              <Text style={styles.productChipPrice}>Rs. {product.price}</Text>
+            </TouchableOpacity>
           ))}
-        </View>
-
-        <SectionHeader title="Live Chat (Read only)" />
-        {liveChat.map((message) => (
-          <View key={message} style={styles.chatBubble}>
-            <Text style={styles.chatText}>{message}</Text>
-          </View>
-        ))}
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: "#f2f7f4",
+    backgroundColor: "#0a0a0a",
   },
-  content: {
-    padding: 16,
-    paddingBottom: 22,
+  videoContainer: {
+    flex: 1,
+    backgroundColor: "#111",
+    position: "relative",
   },
-  videoFrame: {
-    height: 350,
-    backgroundColor: "#101b15",
-    borderRadius: 16,
+  video: {
+    flex: 1,
+  },
+  noCameraBox: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 14,
-    position: "relative",
-    overflow: "hidden",
+    gap: 16,
   },
-  videoStream: {
-    width: "100%",
-    height: "100%",
+  noCameraText: {
+    color: "#aaa",
+    fontSize: 16,
+    textAlign: "center",
   },
-  liveBadge: {
+  permBtn: {
+    backgroundColor: "#1f8f57",
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  permBtnText: {
+    color: "#fff",
+    fontWeight: "700",
+  },
+  topBar: {
     position: "absolute",
-    top: 12,
-    left: 12,
-    backgroundColor: "#d62828",
-    borderRadius: 9,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    zIndex: 10,
+    top: 16,
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    gap: 10,
+    zIndex: 20,
   },
-  liveBadgeText: {
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  badgeLive: {
+    backgroundColor: "#d62828",
+  },
+  badgePreview: {
+    backgroundColor: "#555",
+  },
+  badgeText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  viewerBadge: {
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  viewerText: {
     color: "#fff",
     fontWeight: "700",
     fontSize: 12,
   },
-  videoPlaceholder: {
-    color: "#c5d7cd",
-    fontWeight: "600",
-  },
-  viewerCount: {
+  productOverlay: {
     position: "absolute",
-    bottom: 12,
-    left: 12,
-    color: "#fff",
-    fontSize: 12,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    bottom: 16,
+    left: 16,
+    right: 16,
+    backgroundColor: "rgba(10, 30, 20, 0.88)",
     borderRadius: 12,
-    zIndex: 10,
-  },
-  currentProductCard: {
-    marginBottom: 12,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#dce8e0",
     padding: 12,
+    zIndex: 20,
+    borderWidth: 1,
+    borderColor: "rgba(100,200,140,0.2)",
   },
-  currentName: {
-    color: "#123223",
+  overlayProductName: {
+    color: "#f0fff7",
     fontWeight: "700",
     fontSize: 15,
   },
-  currentPrice: {
-    marginTop: 4,
-    color: "#1f8f57",
+  overlayProductPrice: {
+    color: "#6ee49c",
+    fontWeight: "800",
+    fontSize: 17,
+    marginTop: 2,
+  },
+  errorBanner: {
+    position: "absolute",
+    bottom: 80,
+    left: 16,
+    right: 16,
+    backgroundColor: "rgba(200,30,30,0.9)",
+    borderRadius: 10,
+    padding: 10,
+    zIndex: 30,
+  },
+  errorText: {
+    color: "#fff",
+    fontSize: 12,
+    textAlign: "center",
+  },
+  controls: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#111",
+  },
+  startBtn: {
+    backgroundColor: "#1f8f57",
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  startBtnText: {
+    color: "#fff",
     fontWeight: "800",
     fontSize: 16,
   },
-  productRow: {
-    marginBottom: 8,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#dce8e0",
-    padding: 10,
-    flexDirection: "row",
+  stopBtn: {
+    backgroundColor: "#d62828",
+    borderRadius: 14,
+    paddingVertical: 14,
     alignItems: "center",
-    justifyContent: "space-between",
   },
-  productMeta: {
-    flex: 1,
-    marginRight: 8,
+  stopBtnText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 16,
   },
-  productName: {
-    color: "#173126",
-    fontWeight: "700",
+  productSection: {
+    backgroundColor: "#1a1a1a",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
-  productPrice: {
-    marginTop: 3,
-    color: "#5d7065",
+  sectionTitle: {
+    color: "#aaa",
     fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 10,
+    textTransform: "uppercase",
+    letterSpacing: 1,
   },
-  chatBubble: {
-    backgroundColor: "#ffffff",
-    borderRadius: 10,
+  productChip: {
+    backgroundColor: "#2a2a2a",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginRight: 10,
     borderWidth: 1,
-    borderColor: "#dce8e0",
-    padding: 10,
-    marginBottom: 6,
+    borderColor: "#333",
   },
-  chatText: {
-    color: "#4d6255",
+  productChipActive: {
+    backgroundColor: "#0f3a22",
+    borderColor: "#1f8f57",
+  },
+  productChipText: {
+    color: "#bbb",
+    fontWeight: "700",
     fontSize: 13,
+  },
+  productChipTextActive: {
+    color: "#6ee49c",
+  },
+  productChipPrice: {
+    color: "#777",
+    fontSize: 11,
+    marginTop: 2,
   },
 });
