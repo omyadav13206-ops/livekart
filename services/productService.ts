@@ -93,6 +93,7 @@ type ProductDraft = {
   description: string;
   category: string;
   shortDescription?: string;
+  imageUrl?: string;
 };
 
 /** Add new product */
@@ -117,7 +118,7 @@ export async function addProduct(
       locality,
       rating: 0,
       stock_status: 'in-stock',
-      image_url: 'https://via.placeholder.com/220',
+      image_url: draft.imageUrl ?? 'https://via.placeholder.com/220',
     })
     .select()
     .single();
@@ -140,10 +141,11 @@ export async function updateProduct(
       description: draft.description,
       category: draft.category,
       price: draft.price,
+      ...(draft.imageUrl ? { image_url: draft.imageUrl } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq('id', productId)
-    .eq('seller_id', sellerId) // Only update your own product
+    .eq('seller_id', sellerId)
     .select()
     .single();
 

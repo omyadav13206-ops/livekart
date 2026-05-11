@@ -21,6 +21,7 @@ import type { UserProfile } from '../data/userProfile';
 import { supabase } from '../lib/supabase';
 import type { AppThemeMode, Role } from '../navigation/types';
 import * as authService from '../services/authService';
+import * as liveService from '../services/liveService';
 import * as orderService from '../services/orderService';
 import * as productService from '../services/productService';
 import * as wishlistService from '../services/wishlistService';
@@ -31,6 +32,7 @@ type ProductDraft = {
   description: string;
   category: string;
   shortDescription?: string;
+  imageUrl?: string;
 };
 
 type CheckoutMethod = 'delivery' | 'pickup';
@@ -159,6 +161,13 @@ export function AppProvider({ children }: PropsWithChildren) {
     refreshProducts();
     // Real-time subscribe
     const unsubscribe = productService.subscribeToProducts(setProducts);
+    return unsubscribe;
+  }, []);
+
+  // ── Load Live Sessions ─────────────────────────────────────
+  useEffect(() => {
+    liveService.getActiveLiveSessions().then(setLiveSessions).catch(console.warn);
+    const unsubscribe = liveService.subscribeToLiveSessions(setLiveSessions);
     return unsubscribe;
   }, []);
 

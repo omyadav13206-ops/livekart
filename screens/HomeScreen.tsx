@@ -196,22 +196,35 @@ export default function HomeScreen() {
             />
 
             <SectionHeader
-              title="Featured Sellers Live"
-              subtitle="Join ongoing local live sessions"
+              title="🔴 Live Sessions"
+              subtitle="Real-time live streaming by sellers"
             />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.horizontalList}
+
+            {/* Always-visible Join Live button */}
+            <Pressable
+              style={styles.joinLiveBtn}
+              onPress={() => router.push(AppRoutes.buyerLive)}
             >
-              {liveSessions.map((session) => (
-                <LiveCard
-                  key={session.id}
-                  session={session}
-                  onPress={() => router.push(AppRoutes.buyerLive)}
-                />
-              ))}
-            </ScrollView>
+              <MaterialIcons name="live-tv" size={22} color="#fff" />
+              <Text style={styles.joinLiveBtnText}>Join Live Stream Now</Text>
+              <MaterialIcons name="arrow-forward-ios" size={14} color="#fff" />
+            </Pressable>
+
+            {liveSessions.length > 0 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.horizontalList}
+              >
+                {liveSessions.map((session) => (
+                  <LiveCard
+                    key={session.id}
+                    session={session}
+                    onPress={() => router.push(AppRoutes.buyerLive)}
+                  />
+                ))}
+              </ScrollView>
+            )}
 
             <View style={styles.searchBox}>
               <MaterialIcons name="search" size={20} color="#719181" />
@@ -258,6 +271,22 @@ const styles = StyleSheet.create({
   },
   horizontalList: {
     marginBottom: 14,
+  },
+  joinLiveBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#d62828",
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  joinLiveBtnText: {
+    flex: 1,
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 15,
   },
   searchBox: {
     height: 46,

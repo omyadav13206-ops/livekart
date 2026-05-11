@@ -1,6 +1,6 @@
 /**
  * AuthScreen.tsx — Beautiful Login & Signup screen
- * Supabase auth ke saath integrate hai
+ * Integrated with Supabase authentication
  */
 
 import { MaterialIcons } from "@expo/vector-icons";
@@ -121,7 +121,7 @@ export default function AuthScreen({ onAuthSuccess }: Props) {
             </View>
             <Text style={styles.brandName}>Local Baazar</Text>
             <Text style={styles.brandTagline}>
-              Apne mohalle ki dukaan, ab online
+              Your local marketplace, now online
             </Text>
           </View>
 
@@ -150,7 +150,7 @@ export default function AuthScreen({ onAuthSuccess }: Props) {
             </View>
 
             <Text style={styles.cardTitle}>
-              {isLogin ? "Wapas aaiye! 👋" : "Naya account banao 🌱"}
+              {isLogin ? "Welcome back! 👋" : "Create a new account 🌱"}
             </Text>
             <Text style={styles.cardSubtitle}>
               {isLogin
@@ -216,7 +216,7 @@ export default function AuthScreen({ onAuthSuccess }: Props) {
                 <MaterialIcons name="lock" size={18} color="#7aaa8f" />
                 <TextInput
                   style={styles.input}
-                  placeholder="Kam se kam 6 characters"
+                  placeholder="At least 6 characters"
                   placeholderTextColor="#a3b9ac"
                   value={password}
                   onChangeText={setPassword}

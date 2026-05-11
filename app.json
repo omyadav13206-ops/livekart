@@ -56,7 +56,8 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-image-picker"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -65,7 +66,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "68c11c0e-e363-46c0-b67e-4db55998f510"
+        "projectId": "b6a1ce32-2b33-4be7-9bd4-5bfd3849ebbf"
       }
     }
   }

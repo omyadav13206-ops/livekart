@@ -208,6 +208,26 @@ create policy "Live sessions viewable by everyone" on public.live_sessions for s
 create policy "Hosts can create live sessions" on public.live_sessions for insert with check (auth.uid() = host_id);
 create policy "Hosts can update own session" on public.live_sessions for update using (auth.uid() = host_id);
 
+-- ========================
+-- 9. LIVE CHAT MESSAGES TABLE
+-- ========================
+create table if not exists public.live_chat_messages (
+  id uuid default gen_random_uuid() primary key,
+  channel_name text not null,            -- matches the Agora channel name
+  sender_id uuid references public.profiles(id) on delete cascade not null,
+  sender_name text not null,
+  message text not null,
+  created_at timestamptz default now()
+);
+
+-- Index for fast channel queries
+create index if not exists idx_live_chat_channel on public.live_chat_messages(channel_name, created_at desc);
+
+-- RLS: logged-in users can read and write chat in any live channel
+alter table public.live_chat_messages enable row level security;
+create policy "Anyone can view live chat" on public.live_chat_messages for select using (auth.role() = 'authenticated');
+create policy "Logged-in users can send live chat" on public.live_chat_messages for insert with check (auth.uid() = sender_id);
+
 -- ============================================================
 -- REALTIME ENABLE (Must also be enabled in Supabase Dashboard)
 -- ============================================================
@@ -215,3 +235,4 @@ alter publication supabase_realtime add table public.products;
 alter publication supabase_realtime add table public.orders;
 alter publication supabase_realtime add table public.messages;
 alter publication supabase_realtime add table public.live_sessions;
+alter publication supabase_realtime add table public.live_chat_messages;
